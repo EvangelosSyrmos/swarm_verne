@@ -1,0 +1,50 @@
+version: "3.7"
+services:
+  vmq-master:
+    image: vernemq/vernemq
+    ports:
+      - 8888:8888
+    environment:
+      DOCKER_VERNEMQ_SWARM: 1
+      DOCKER_VERNEMQ_ACCEPT_EULA: 'yes'
+      DOCKER_NET_INTERFACE: eth0
+
+      DOCKER_VERNEMQ_LISTENER__HTTP__METRICS: '0.0.0.0:8888'
+    networks:
+      - vmq_net
+  vmq-worker:
+    image: vernemq/vernemq
+    depends_on:
+      - vmq-master
+    ports:
+      - 1883:1883
+      - 8883:8883
+    volumes:
+      - ./passwd:/vernemq/etc/vernemq
+      - ./verne-certs/ssl2:/etc/ssl:ro
+    environment:
+      DOCKER_VERNEMQ_SWARM: 1
+      DOCKER_VERNEMQ_DISCOVERY_NODE: vmq-master
+      DOCKER_VERNEMQ_ACCEPT_EULA: 'yes'
+      DOCKER_NET_INTERFACE: eth1
+
+      DOCKER_VERNEMQ_ALLOW_ANONYMOUS: 'off'
+      DOCKER_VERNEMQ_VMQ_PASSWD__PASSWORD_FILE: '/vernemq/etc/vernemq/vmq.passwd'
+      DOCKER_VERNEMQ_LISTENER__SSL__CAFILE: '/etc/ssl/ca-chain.cert.pem'
+      DOCKER_VERNEMQ_LISTENER__SSL__CERTFILE: '/etc/ssl/localhost.cert.pem'
+      DOCKER_VERNEMQ_LISTENER__SSL__KEYFILE: '/etc/ssl/localhost.key.pem'
+      DOCKER_VERNEMQ_LISTENER__SSL__USE_IDENTITY_AS_USERNAME: 'off'
+      DOCKER_VERNEMQ_LISTENER__SSL__REQUIRE_CERTIFICATE: 'off'
+      DOCKER_VERNEMQ_PLUGINS__VMQ_PASSWD: 'on'
+      DOCKER_VERNEMQ_PLUGINS__VMQ_ACL: 'on'
+      
+      DOCKER_VERNEMQ_LISTENER__TCP__DEFAULT: '0.0.0.0:1883'
+      DOCKER_VERNEMQ_LISTENER__SSL__DEFAULT: '0.0.0.0:8883'
+    networks:
+      - vmq_net
+    deploy:
+      replicas: 2
+
+networks:
+  vmq_net:
+    driver: overlay
